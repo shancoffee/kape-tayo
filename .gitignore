@@ -1,0 +1,12 @@
+# Secret API key, never upload this
+.env
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Generated map files
+*.html
+
+# Personal ratings data
+ratings.json
