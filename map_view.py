@@ -4,7 +4,7 @@ Interactive map for Kape Tayo, using the folium library.
 folium writes a web page (HTML) with a real, zoomable map (Esri street
 tiles, the Leaflet map library). We save that page and open it in the
 default browser. The map shows:
-  - a red "You are here" pin
+  - a purple "You are here" pin
   - one pin per café, colored by Kape Score (click it for details)
   - the chosen café with a coffee-cup icon and the route line to it
   - a faint circle showing the search radius
@@ -46,6 +46,8 @@ def _popup_html(cafe, units):
     # html.escape stops names like "Tom & Jerry's" from breaking the page.
     name = html.escape(cafe["name"])
     lines = [f"<b>{name}</b>"]
+    if cafe.get("type"):
+        lines.append(f"<i>{html.escape(cafe['type'])}</i>")
     if cafe.get("address"):
         lines.append(html.escape(cafe["address"]))
     if "score" in cafe:
@@ -74,9 +76,11 @@ def _legend_html():
     )
 
 
-def show_map(start, cafes, chosen=None, route_points=None, radius_m=None,
-             units="km", file_path=MAP_FILE, open_browser=True):
-    """Build the map, save it as an HTML file, and open it in the browser.
+def build_map(start, cafes, chosen=None, route_points=None, radius_m=None, units="km"):
+    """Build the map and return it as a folium.Map (without saving it).
+
+    The terminal app uses show_map() below, which saves and opens it.
+    The GUI (kape_tayo_gui.py) shows the returned map inside the page.
 
     Args:
         start: dict with "lat" and "lng" (the user's location).
@@ -86,23 +90,19 @@ def show_map(start, cafes, chosen=None, route_points=None, radius_m=None,
         route_points: [[lat, lng], ...] from get_route(..., with_points=True).
         radius_m: search radius in meters, drawn as a faint circle.
         units: "km" or "miles" for the popups.
-        file_path: where to save the map.
-        open_browser: False to only save the file (used for testing).
-
-    Returns:
-        (path, error): the full path of the saved map, or an error message.
     """
     start_point = [start["lat"], start["lng"]]
     cafe_map = folium.Map(location=start_point, zoom_start=16, tiles=MAP_TILES)
 
+    # Purple for "you" (the search circle and your pin), brown for the route.
     if radius_m:
-        folium.Circle(start_point, radius=radius_m, color="#6f4e37",
-                      weight=1, fill=True, fill_opacity=0.05).add_to(cafe_map)
+        folium.Circle(start_point, radius=radius_m, color="#7B4FA0",
+                      weight=2, fill=True, fill_opacity=0.06).add_to(cafe_map)
 
     folium.Marker(
         start_point,
         tooltip="You are here",
-        icon=folium.Icon(color="red", icon="user", prefix="fa"),
+        icon=folium.Icon(color="purple", icon="user", prefix="fa"),
     ).add_to(cafe_map)
 
     for cafe in cafes:
@@ -112,7 +112,9 @@ def show_map(start, cafes, chosen=None, route_points=None, radius_m=None,
         icon_name = "coffee" if is_chosen else "circle"
         folium.Marker(
             [cafe["lat"], cafe["lng"]],
-            tooltip=cafe["name"],
+            # Café names come from OpenStreetMap, which anyone can edit, so
+            # escape them before they go into the page.
+            tooltip=html.escape(cafe["name"]),
             popup=folium.Popup(_popup_html(cafe, units), max_width=260),
             icon=folium.Icon(color=color, icon=icon_name, prefix="fa"),
         ).add_to(cafe_map)
@@ -125,9 +127,38 @@ def show_map(start, cafes, chosen=None, route_points=None, radius_m=None,
     all_points = [start_point] + [[c["lat"], c["lng"]] for c in cafes] + (route_points or [])
     if len(all_points) > 1:
         cafe_map.fit_bounds(all_points, padding=(30, 30))
+        lats = [point[0] for point in all_points]
+        lngs = [point[1] for point in all_points]
+        bounds = [[min(lats), min(lngs)], [max(lats), max(lngs)]]
+        # When the map sits inside another page (the GUI), its box can still
+        # be 0 pixels wide when fit_bounds runs, so it zooms out too far.
+        # This small JavaScript fits the pins again once the page has loaded,
+        # and again if the window is resized.
+        cafe_map.get_root().script.add_child(folium.Element(f"""
+            function kapeTayoFit() {{
+                {cafe_map.get_name()}.invalidateSize();
+                {cafe_map.get_name()}.fitBounds({bounds}, {{padding: [30, 30]}});
+            }}
+            window.addEventListener("load", function () {{ setTimeout(kapeTayoFit, 200); }});
+            window.addEventListener("resize", kapeTayoFit);
+        """))
 
     cafe_map.get_root().html.add_child(folium.Element(_legend_html()))
+    return cafe_map
 
+
+def show_map(start, cafes, chosen=None, route_points=None, radius_m=None,
+             units="km", file_path=MAP_FILE, open_browser=True):
+    """Build the map, save it as an HTML file, and open it in the browser.
+
+    Takes the same arguments as build_map(), plus:
+        file_path: where to save the map.
+        open_browser: False to only save the file (used for testing).
+
+    Returns:
+        (path, error): the full path of the saved map, or an error message.
+    """
+    cafe_map = build_map(start, cafes, chosen, route_points, radius_m, units)
     try:
         cafe_map.save(file_path)
     except OSError:
