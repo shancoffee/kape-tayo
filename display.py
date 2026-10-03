@@ -79,6 +79,15 @@ def format_duration(time_ms):
     return f"{hours} h {minutes:02d} min"
 
 
+def _type_note(cafe):
+    """Return the place type (like "Coffee shop") unless it is a plain café.
+
+    Most places are cafés, so labeling every row would only add clutter.
+    """
+    place_type = cafe.get("type", "Café")
+    return "" if place_type == "Café" else place_type
+
+
 def _format_wifi(wifi):
     """Show True / False / None (unknown) from cafe_search as Yes / No / ?."""
     if wifi is True:
@@ -112,15 +121,16 @@ def show_ranked_table(cafes, units="km", vehicle="car"):
 
     for rank, cafe in enumerate(cafes, start=1):
         color = LABEL_COLORS[cafe["label"]]
-        # Bold name, a * for favorites, your rating (like ★4), and the
-        # address in grey below.
+        # Bold name, a * for favorites, your rating (like ★4), and a grey
+        # line below with the place type (if not a plain café) and address.
         name = f"[bold]{cafe['name']}[/bold]"
         if cafe.get("favorite"):
             name += " [yellow]*[/yellow]"
         if cafe.get("rating"):
             name += f" [yellow]★{cafe['rating']}[/yellow]"
-        if cafe["address"]:
-            name += f"\n[dim]{cafe['address']}[/dim]"
+        details = [part for part in [_type_note(cafe), cafe["address"]] if part]
+        if details:
+            name += f"\n[dim]{', '.join(details)}[/dim]"
         table.add_row(
             str(rank),
             name,
@@ -170,8 +180,9 @@ def show_rated_table(rated):
 def show_bahala_pick(cafe, units="km"):
     """Announce the café that Bahala na! picked."""
     lines = [f"[bold]☕ {cafe['name']}[/bold]"]
-    if cafe["address"]:
-        lines.append(f"[dim]{cafe['address']}[/dim]")
+    details = [part for part in [_type_note(cafe), cafe["address"]] if part]
+    if details:
+        lines.append(f"[dim]{', '.join(details)}[/dim]")
     # Straight-line distance, since this café has not been routed yet.
     lines.append(f"About {format_distance(cafe['straight_m'], units)} away (straight line)")
     lines.append(f"WiFi: {_format_wifi(cafe['wifi'])}")
