@@ -178,6 +178,49 @@ def show_error(message):
     console.print(f"[bold red]Error:[/bold red] {message}")
 
 
+def show_info(message):
+    """Print a short grey note, e.g. "2 cafés skipped"."""
+    console.print(f"[dim]{message}[/dim]")
+
+
+def show_success(message):
+    """Print a short green message, e.g. "Settings saved"."""
+    console.print(f"[green]{message}[/green]")
+
+
+def show_banner():
+    """Print the app title when Kape Tayo starts."""
+    console.print(Panel(
+        "[bold]Kape Tayo[/bold]\n[dim]Find the nearest café, get the best pick, and go.[/dim]",
+        border_style="#c08552", expand=False,
+    ))
+
+
+def show_menu():
+    """Print the main menu."""
+    console.print(
+        "\n[bold magenta]Main menu[/bold magenta]\n"
+        "  1. Find cafés near me\n"
+        "  2. My rated cafés\n"
+        "  3. Settings (units, radius, travel mode)\n"
+        "  4. Bahala na! (random pick)\n"
+        "  5. Quit"
+    )
+
+
+def show_settings(settings):
+    """Print the current settings and the Settings menu."""
+    last = settings["last_location"]
+    console.print(
+        "\n[bold magenta]Settings[/bold magenta]\n"
+        f"  1. Units:        [cyan]{settings['units']}[/cyan]\n"
+        f"  2. Radius:       [cyan]{settings['radius_m']} m[/cyan]\n"
+        f"  3. Travel mode:  [cyan]{settings['vehicle']}[/cyan]\n"
+        f"  [dim]Last location: {last['name'] if last else 'none yet'}[/dim]\n"
+        "  0. Back to main menu"
+    )
+
+
 @contextmanager
 def progress_bar(description, total):
     """Show a progress bar while slow work runs.
