@@ -13,6 +13,7 @@ The map file is kape_tayo_map.html. .gitignore ignores *.html, so it is
 never committed.
 """
 import html
+import urllib.parse
 import webbrowser
 from pathlib import Path
 
@@ -39,6 +40,27 @@ PIN_COLORS = {
     "Okay": "orange",
     "Maybe skip": "gray",
 }
+
+
+# Kape Tayo travel modes and the matching Google Maps travel modes.
+GOOGLE_TRAVEL_MODES = {"car": "driving", "bike": "bicycling", "foot": "walking"}
+
+
+def google_maps_url(start, cafe, vehicle="car"):
+    """Return a Google Maps link with directions from start to the café.
+
+    This is Google's public "Maps URLs" format: it needs no API key and
+    costs nothing. Opening it shows the route in Google Maps, on a laptop
+    or phone, so you can navigate there. Your location is only sent to
+    Google when you open the link.
+    """
+    params = {
+        "api": 1,
+        "origin": f"{start['lat']},{start['lng']}",
+        "destination": f"{cafe['lat']},{cafe['lng']}",
+        "travelmode": GOOGLE_TRAVEL_MODES.get(vehicle, "driving"),
+    }
+    return "https://www.google.com/maps/dir/?" + urllib.parse.urlencode(params)
 
 
 def _popup_html(cafe, units):

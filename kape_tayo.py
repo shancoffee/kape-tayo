@@ -16,12 +16,13 @@ Built on Cisco DEVASC Lab 4.9.2 (see original_lab/graphhopper_parse-json_7.py).
 """
 import random
 import time
+import webbrowser
 
 import display
 from cafe_search import find_cafes
 from graphhopper_api import VEHICLES, geocode, get_route
 from kape_score import add_travel_times, rank_cafes
-from map_view import show_map
+from map_view import google_maps_url, show_map
 from ratings import MAX_RATING, MIN_RATING, load_ratings, rate_cafe, remove_rating, sorted_ratings
 from settings import MAX_RADIUS_M, MIN_RADIUS_M, UNITS, load_settings, save_settings
 
@@ -172,6 +173,13 @@ def show_cafe_details(start, cafe, ranked, settings, ratings):
         else:
             display.show_success("Map opened in your browser.")
             display.show_info(path)
+
+    # The same trip in Google Maps, for real navigation (free, no API key).
+    if ask_yes_no("Open in Google Maps for navigation?", default=False):
+        url = google_maps_url(start, cafe, settings["vehicle"])
+        webbrowser.open(url)
+        display.show_success("Opened in Google Maps.")
+        display.show_info(url)
 
     ask_to_rate(cafe, ratings)
 
