@@ -135,7 +135,8 @@ def get_route(start, end, vehicle="car", with_points=False):
             "distance_m": 1234.5,          # meters
             "time_ms": 456789,             # milliseconds
             "instructions": [              # turn-by-turn steps
-                {"text": "Turn left onto Espana Boulevard", "distance_m": 120.0, "time_ms": 30000},
+                {"text": "Turn left onto Espana Boulevard", "distance_m": 120.0,
+                 "time_ms": 30000, "sign": -2},
                 ...
             ],
             "points": [[lat, lng], ...],   # only filled when with_points=True
@@ -172,6 +173,9 @@ def get_route(start, end, vehicle="car", with_points=False):
             "text": step["text"],
             "distance_m": step["distance"],
             "time_ms": step["time"],
+            # The kind of turn, e.g. -2 left, 0 straight, 2 right, 4 arrive.
+            # display.py turns it into an arrow.
+            "sign": step.get("sign", 0),
         })
 
     points = []
