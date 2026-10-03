@@ -168,6 +168,10 @@ if __name__ == "__main__":
             if error:
                 display.show_error(error)
                 route = {"points": []}
+            else:
+                # The same route has the turn-by-turn steps, so no extra credit.
+                display.show_directions(route, "University of Santo Tomas (test location)",
+                                        top["name"], units="km", vehicle="foot")
             path, error = show_map(ust, ranked, chosen=top, route_points=route["points"],
                                    radius_m=radius)
             if error:
