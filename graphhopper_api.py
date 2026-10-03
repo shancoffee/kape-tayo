@@ -32,6 +32,10 @@ VEHICLES = ["car", "bike", "foot"]
 # Seconds to wait for GraphHopper before giving up, so the app never freezes.
 TIMEOUT = 15
 
+# Where to prefer place matches when there is no last location yet (Manila).
+# Places elsewhere still work if you add the city or country to the search.
+DEFAULT_BIAS = {"lat": 14.5995, "lng": 120.9842}
+
 load_dotenv()
 
 
@@ -74,11 +78,15 @@ def _send_request(url, params):
     return None, f"GraphHopper error {reply.status_code}: {message}"
 
 
-def geocode(location):
+def geocode(location, near=None):
     """Find the coordinates of a place name.
 
     Args:
         location: what the user typed, for example "UST, Manila".
+        near: optional dict with "lat" and "lng" (like the last location).
+            GraphHopper then prefers matches close to it. Without it we
+            prefer places near Manila. Example: "ust" alone matches
+            Ustaritz, France first, but near Manila it finds UST.
 
     Returns:
         (place, error) where place is a dict like
@@ -92,7 +100,10 @@ def geocode(location):
     if location == "":
         return None, "Please type a location."
 
-    params = {"q": location, "limit": 1, "key": key}
+    bias = near or DEFAULT_BIAS
+    params = {"q": location, "limit": 1, "key": key,
+              # "point" is GraphHopper's location bias: prefer results near here.
+              "point": f"{bias['lat']},{bias['lng']}"}
     json_data, error = _send_request(GEOCODE_URL, params)
     if error:
         return None, error
