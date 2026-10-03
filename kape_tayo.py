@@ -108,7 +108,9 @@ def ask_location(settings):
             continue
 
         with console.status("Finding your location..."):
-            place, error = geocode(answer)
+            # Prefer matches near the last location (or Manila), so a short
+            # name like "ust" finds UST and not Ustaritz, France.
+            place, error = geocode(answer, near=last)
         if error:
             display.show_error(error)
             continue

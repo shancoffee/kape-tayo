@@ -185,7 +185,9 @@ def resolve_location(text):
         place = state.places[text]   # Already looked up: no credit used.
     else:
         with st.spinner("Finding your location..."):
-            place, error = geocode(text)
+            # Prefer matches near the last location (or Manila), so a short
+            # name like "ust" finds UST and not Ustaritz, France.
+            place, error = geocode(text, near=settings["last_location"])
         if error:
             st.error(error)
             return None
