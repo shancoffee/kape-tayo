@@ -27,7 +27,7 @@ from cafe_search import find_cafes
 from display import TURN_ARROWS, format_distance, format_duration
 from graphhopper_api import VEHICLES, geocode, get_route
 from kape_score import add_travel_times, rank_cafes
-from map_view import build_map
+from map_view import build_map, google_maps_url
 from ratings import MAX_RATING, MIN_RATING, load_ratings, rate_cafe, remove_rating, sorted_ratings
 from settings import MAX_RADIUS_M, MIN_RADIUS_M, UNITS, load_settings, save_settings
 
@@ -293,6 +293,9 @@ def show_trip(start, cafe, map_cafes, vehicle, radius, units, key):
         distance_box, time_box = st.columns(2)
         distance_box.metric("Distance", format_distance(route["distance_m"], units))
         time_box.metric("Time", format_duration(route["time_ms"]))
+        # Opens the same trip in Google Maps for real navigation (free, no key).
+        st.link_button("🗺 Open in Google Maps", google_maps_url(start, cafe, vehicle),
+                       width="stretch")
         rating_form(cafe, key)
 
     with right:
