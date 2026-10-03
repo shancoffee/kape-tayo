@@ -1,5 +1,14 @@
 """
-Café search for Kape Tayo, using the OpenStreetMap Overpass API.
+Coffee place search for Kape Tayo, using the OpenStreetMap Overpass API.
+
+It finds three kinds of places, so small businesses are included too:
+  - "Café":          amenity=cafe (most cafés, big and small)
+  - "Coffee shop":   shop=coffee (coffee stalls, roasters, bean sellers)
+  - "Serves coffee": any place whose cuisine includes coffee, such as a
+                     donut shop or diner tagged cuisine=coffee_shop
+
+We do NOT search by name (like "Kape" or "Cafe" in the name), because that
+also finds gaming cafés, internet cafés, and brewery offices.
 
 Overpass is free and needs no API key, so searching costs no GraphHopper
 credits. Routing to each café does cost credits, which is why find_cafes()
@@ -56,18 +65,35 @@ def distance_m(lat1, lng1, lat2, lng2):
 
 
 def _build_query(lat, lng, radius_m):
-    """Build the Overpass query that finds cafés within radius_m of a point.
+    """Build the Overpass query that finds coffee places within radius_m of a point.
 
-    Cafés in OpenStreetMap can be a single pin (node) or a building outline
-    (way). "nwr" means node, way, or relation, so one line finds them all.
+    Places in OpenStreetMap can be a single pin (node) or a building outline
+    (way). "nwr" means node, way, or relation, so each line finds them all.
+    The ( ... ); brackets join the three searches into one list, and a
+    place that matches more than one line is only listed once.
+    ~"coffee",i means "contains coffee", ignoring upper and lower case.
     "out center tags" gives the middle point of buildings plus all their
     tags (name, wifi, opening hours, and so on).
     """
+    around = f"(around:{radius_m},{lat},{lng})"
     return (
         "[out:json];"
-        f'nwr["amenity"="cafe"](around:{radius_m},{lat},{lng});'
+        "("
+        f'nwr["amenity"="cafe"]{around};'
+        f'nwr["shop"="coffee"]{around};'
+        f'nwr["cuisine"~"coffee",i]{around};'
+        ");"
         "out center tags;"
     )
+
+
+def _place_type(tags):
+    """Label what kind of coffee place this is, for the table and map."""
+    if tags.get("amenity") == "cafe":
+        return "Café"
+    if tags.get("shop") == "coffee":
+        return "Coffee shop"
+    return "Serves coffee"   # Matched only because its cuisine includes coffee.
 
 
 def _ask_overpass(query):
@@ -131,6 +157,7 @@ def find_cafes(lat, lng, radius_m, limit=10):
         {
             "id": "node/123456",          # unique OpenStreetMap id
             "name": "Starbucks Dapitan",
+            "type": "Café",               # "Café", "Coffee shop", or "Serves coffee"
             "lat": 14.61, "lng": 120.99,
             "straight_m": 230.5,          # straight-line distance in meters
             "wifi": True,                 # True, False, or None (unknown)
@@ -159,6 +186,7 @@ def find_cafes(lat, lng, radius_m, limit=10):
         cafes.append({
             "id": f"{element['type']}/{element['id']}",
             "name": tags.get("name", "Unnamed café"),
+            "type": _place_type(tags),
             "lat": cafe_lat,
             "lng": cafe_lng,
             "straight_m": distance_m(lat, lng, cafe_lat, cafe_lng),
@@ -168,7 +196,7 @@ def find_cafes(lat, lng, radius_m, limit=10):
         })
 
     if len(cafes) == 0:
-        return None, f"No cafés found within {radius_m} m. Try a bigger radius."
+        return None, f"No coffee places found within {radius_m} m. Try a bigger radius."
 
     cafes.sort(key=lambda cafe: cafe["straight_m"])
     return cafes[:limit], None
@@ -186,7 +214,7 @@ if __name__ == "__main__":
         print(f"Found {len(cafes)} (closest first):")
         for cafe in cafes:
             wifi = {True: "WiFi", False: "no WiFi", None: "WiFi unknown"}[cafe["wifi"]]
-            print(f"  {cafe['name']:<35} {cafe['straight_m']:>5.0f} m   {wifi}")
+            print(f"  {cafe['name']:<30} {cafe['type']:<14} {cafe['straight_m']:>5.0f} m   {wifi}")
 
     print("Testing error handling...")
     print("  Bad radius:", find_cafes(ust_lat, ust_lng, 0)[1])
