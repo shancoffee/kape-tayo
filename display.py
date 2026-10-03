@@ -112,10 +112,13 @@ def show_ranked_table(cafes, units="km", vehicle="car"):
 
     for rank, cafe in enumerate(cafes, start=1):
         color = LABEL_COLORS[cafe["label"]]
-        # Bold name, with a star for favorites, and the address in grey below.
+        # Bold name, a * for favorites, your rating (like ★4), and the
+        # address in grey below.
         name = f"[bold]{cafe['name']}[/bold]"
         if cafe.get("favorite"):
             name += " [yellow]*[/yellow]"
+        if cafe.get("rating"):
+            name += f" [yellow]★{cafe['rating']}[/yellow]"
         if cafe["address"]:
             name += f"\n[dim]{cafe['address']}[/dim]"
         table.add_row(
@@ -126,6 +129,40 @@ def show_ranked_table(cafes, units="km", vehicle="car"):
             f"[{color}]{cafe['score']}[/{color}]",
             f"[{color}]{cafe['label']}[/{color}]",
             _format_wifi(cafe["wifi"]),
+        )
+    console.print(table)
+
+
+def format_stars(rating):
+    """Turn a 1 to 5 rating into stars like "★★★★☆". None means not rated."""
+    if rating is None:
+        return "[dim]not rated[/dim]"
+    return "[yellow]" + "★" * rating + "[/yellow][dim]" + "☆" * (5 - rating) + "[/dim]"
+
+
+def show_rated_table(rated):
+    """Print "My rated cafés".
+
+    Args:
+        rated: list of (cafe_id, entry) from ratings.sorted_ratings().
+    """
+    table = Table(title="My rated cafés", header_style="bold magenta", box=box.SIMPLE_HEAD)
+    table.add_column("#", justify="right", no_wrap=True)
+    table.add_column("Café / Address", ratio=1)
+    table.add_column("Rating", no_wrap=True)
+    table.add_column("Fav", justify="center", no_wrap=True)
+    table.add_column("Rated on", no_wrap=True)
+
+    for number, (cafe_id, entry) in enumerate(rated, start=1):
+        name = f"[bold]{entry['name']}[/bold]"
+        if entry["address"]:
+            name += f"\n[dim]{entry['address']}[/dim]"
+        table.add_row(
+            str(number),
+            name,
+            format_stars(entry["rating"]),
+            "[yellow]*[/yellow]" if entry["favorite"] else "",
+            entry["rated_on"],
         )
     console.print(table)
 
@@ -218,6 +255,18 @@ def show_settings(settings):
         f"  3. Travel mode:  [cyan]{settings['vehicle']}[/cyan]\n"
         f"  [dim]Last location: {last['name'] if last else 'none yet'}[/dim]\n"
         "  0. Back to main menu"
+    )
+
+
+def show_rating_options(entry):
+    """Print the edit menu for one rated café."""
+    console.print(
+        f"\n[bold magenta]{entry['name']}[/bold magenta]  {format_stars(entry['rating'])}"
+        f"{'  [yellow]* favorite[/yellow]' if entry['favorite'] else ''}\n"
+        "  1. Change rating\n"
+        f"  2. {'Remove from' if entry['favorite'] else 'Add to'} favorites\n"
+        "  3. Remove this café from my ratings\n"
+        "  0. Back"
     )
 
 
