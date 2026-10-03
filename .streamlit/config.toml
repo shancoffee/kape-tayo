@@ -1,0 +1,20 @@
+# Streamlit settings for the Kape Tayo GUI (kape_tayo_gui.py).
+# Streamlit reads this file automatically when you run the app.
+
+[theme]
+base = "light"
+# Purple for buttons, sliders, and the selected tab.
+primaryColor = "#7B4FA0"
+# Cream page, latte panels, and espresso text: coffee colors.
+backgroundColor = "#FBF7F2"
+secondaryBackgroundColor = "#F1E6DA"
+textColor = "#3B2A20"
+
+[server]
+# Only this computer can open the app. This also stops the Windows
+# Firewall pop-up, because no other device can connect.
+address = "localhost"
+
+[browser]
+# Do not send usage statistics to Streamlit.
+gatherUsageStats = false
