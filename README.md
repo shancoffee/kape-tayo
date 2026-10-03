@@ -2,10 +2,11 @@
 
 **Find the nearest coffee shops, get the best pick, and go.**
 
-Kape Tayo is a Python terminal app. You type where you are, and it finds the
-cafés around you, ranks them with a **Kape Score**, gives you turn-by-turn
-directions, and opens an interactive map in your browser. You can rate cafés
-and mark favorites, and your ratings make future recommendations better.
+Kape Tayo is a Python app with two ways to use it: a colorful **terminal app**
+and a **web GUI** in your browser. You type where you are, and it finds the
+coffee places around you, ranks them with a **Kape Score**, gives you
+turn-by-turn directions, and shows an interactive map. You can rate cafés and
+mark favorites, and your ratings make future recommendations better.
 
 This project is a feature enhancement of the Cisco DevNet Associate (DEVASC)
 **Lab 4.9.2: Integrate a REST API in a Python Application**
@@ -16,7 +17,7 @@ This project is a feature enhancement of the Cisco DevNet Associate (DEVASC)
 
 ## Features
 
-- **Café search by radius:** finds cafés from 100 m to 5 km around any place you type
+- **Coffee place search by radius:** finds cafés, small coffee shops, and places that serve coffee, from 100 m to 5 km around any place you type
 - **Ranking by real travel time:** uses actual road or walking routes, not straight lines
 - **Travel modes:** car, bike, or foot
 - **Kape Score (0 to 100):** combines travel time, your rating, and favorites into one recommendation
@@ -27,6 +28,7 @@ This project is a feature enhancement of the Cisco DevNet Associate (DEVASC)
 - **Saved settings:** units, radius, travel mode, and your last location are remembered
 - **Bahala na!:** can't decide? Let the app pick a random café for you
 - **Input validation and error handling:** bad input, no internet, busy servers, and API errors never crash the app
+- **Web GUI (bonus):** the same app as a web page, in coffee browns and purple, with the map built into the page
 
 ---
 
@@ -35,7 +37,8 @@ This project is a feature enhancement of the Cisco DevNet Associate (DEVASC)
 | | Original Lab 4.9.2 | Kape Tayo |
 |---|---|---|
 | **Goal** | Directions between two places you type | Find, rank, and get directions to the best café near you |
-| **Destinations** | You type one destination | Cafés are found automatically (OpenStreetMap Overpass API) |
+| **Interface** | Terminal only | Terminal app, plus a web GUI (Streamlit) |
+| **Destinations** | You type one destination | Coffee places are found automatically (OpenStreetMap Overpass API) |
 | **Routes per search** | 1 | Up to 10 (one per café), then 1 more for the café you pick |
 | **Recommendation** | None | Kape Score from travel time, your rating, and favorites |
 | **Output** | Plain `print()` lines | Colored tables, arrows, progress bars (`rich`) |
@@ -73,7 +76,9 @@ cd kape-tayo
 pip install -r requirements.txt
 ```
 
-This installs `requests`, `python-dotenv`, `rich`, and `folium`.
+This installs `requests`, `python-dotenv`, `rich`, `folium`, and `streamlit`
+(for the web GUI). Streamlit is the biggest one, so on a slow connection the
+install can take a while.
 
 ### 3. Add your GraphHopper API key
 
@@ -145,6 +150,28 @@ Open the map in your browser? (Y/n):
 
 In the table, `*` marks a favorite and `★5` is your rating.
 
+### Web GUI (bonus)
+
+```bash
+python -m streamlit run kape_tayo_gui.py
+```
+
+It opens in your browser at `http://localhost:8501`. Press **Ctrl+C** in the
+terminal to stop it. The first time, Streamlit may ask for an email; just
+press Enter to skip.
+
+- **Sidebar:** type where you are, then press **Enter** (or **🔎 Search**) or
+  **🎲 Bahala na!**. Units, radius, and travel mode are below.
+- **🔎 Find cafés:** stat cards, the top pick, the ranked table with Kape Score
+  bars, then pick a café for directions, the map, and a rating.
+- **🎲 Bahala na!:** a random pick with directions and the map. Press
+  **Roll again** for another one.
+- **⭐ My rated cafés:** your ratings; change them or delete them (it asks first).
+
+The GUI and the terminal app share the same `settings.json` and
+`ratings.json`, so a café you rate in one shows up in the other. The GUI only
+accepts connections from your own computer (see `.streamlit/config.toml`).
+
 ---
 
 ## Kape Score
@@ -180,11 +207,11 @@ rating or a favorite mark to become "Highly recommended".
 ## How it works
 
 1. **Location:** GraphHopper **Geocoding API** turns the place you type into latitude and longitude.
-2. **Café search:** OpenStreetMap **Overpass API** finds every place tagged `amenity=cafe` within your radius. The 10 closest (in a straight line) are kept.
+2. **Coffee place search:** OpenStreetMap **Overpass API** finds every place within your radius that is tagged `amenity=cafe` (shown as "Café"), `shop=coffee` ("Coffee shop"), or has a `cuisine` that includes coffee ("Serves coffee", like a donut shop that sells coffee). The 10 closest (in a straight line) are kept.
 3. **Travel times:** GraphHopper **Routing API** gets the real travel time to each café.
 4. **Ranking:** each café gets a Kape Score and the table is sorted best first.
 5. **Directions:** the route to your chosen café is requested with `points_encoded=false`, so the same reply gives both the turn-by-turn steps and the route line for the map.
-6. **Map:** `folium` builds a web page with the map and opens it in your browser.
+6. **Map:** `folium` builds a web page with the map. The terminal app opens it in your browser; the GUI shows it inside its own page.
 7. **Rating:** your rating and favorite are saved in `ratings.json` and used in future Kape Scores.
 
 ### APIs used
@@ -203,8 +230,9 @@ rating or a favorite mark to become "Highly recommended".
 ```
 kape-tayo/
 ├── kape_tayo.py         Main file you run: menus and the app flow
+├── kape_tayo_gui.py     The web GUI version (Streamlit)
 ├── graphhopper_api.py   GraphHopper Geocoding and Routing (based on the lab code)
-├── cafe_search.py       Café search with the Overpass API
+├── cafe_search.py       Coffee place search with the Overpass API
 ├── kape_score.py        Kape Score, travel times, and ranking
 ├── display.py           Everything shown on screen (tables, directions, menus)
 ├── map_view.py          Interactive map with folium
@@ -212,6 +240,7 @@ kape-tayo/
 ├── settings.py          Saves and loads your settings and last location
 ├── check_setup.py       Checks your key, libraries, and APIs
 ├── requirements.txt     Libraries to install
+├── .streamlit/          GUI colors and settings (config.toml)
 ├── original_lab/        Lab 4.9.2 PDF and the final lab code
 ├── .env                 Your API key (you create it; never uploaded)
 ├── ratings.json         Your ratings (created automatically; never uploaded)
@@ -221,8 +250,10 @@ kape-tayo/
 
 **Design note for other teams:** only `display.py` and `kape_tayo.py` print
 or ask for input. The other modules only return data, as a pair
-`(result, error)`. This keeps each part easy to test, and a GUI could replace
-the terminal screens without changing the API, search, or scoring code.
+`(result, error)`. This keeps each part easy to test, and it is why the GUI
+was possible as one new file: `kape_tayo_gui.py` replaces only the screens and
+reuses every other module (`map_view.py` got one small split, `build_map()`,
+so the GUI can show the map inside its page).
 `graphhopper_api.py`, `cafe_search.py`, `kape_score.py`, `display.py`, and
 `map_view.py` each have a small self-test you can run directly, for example
 `python cafe_search.py`.
@@ -234,7 +265,8 @@ the terminal screens without changing the API, search, or scoring code.
 - **GraphHopper free plan: 500 credits per day.** Each geocode or route uses 1 credit. A full search (option 1) uses about 12, so you can do roughly 40 searches a day. Reusing your last location saves 1 credit.
 - **Overpass can be busy.** The free public server sometimes answers "too busy" (error 504). The app tries the main server up to 3 times, then a backup server, so a busy moment can make a search take 30 seconds or more.
 - **WiFi and opening hours are often missing.** These come from OpenStreetMap volunteers, so many cafés show WiFi as `?` (unknown).
-- **Some cafés may be tea shops or missing a name.** The app shows whatever OpenStreetMap lists as `amenity=cafe`; unnamed ones show as "Unnamed café".
+- **Only mapped places appear.** The app shows what OpenStreetMap volunteers have added, so some small coffee sellers may be missing, and some places tagged as cafés are really tea or dessert shops. Unnamed ones show as "Unnamed café". The app does not search by name, because names with "Cafe" also match gaming and internet cafés.
+- **GUI memory:** the GUI remembers searches and routes while the page is open, so clicking around never spends credits twice. Refreshing the browser page starts fresh, so the next search uses credits again.
 - **Map tiles:** the default OpenStreetMap tiles block maps opened from a local file (you would see "403 Access blocked"), so the map uses Esri World Street Map tiles instead.
 
 ---
@@ -245,6 +277,6 @@ the terminal screens without changing the API, search, or scoring code.
 - Routing and geocoding by [GraphHopper](https://www.graphhopper.com/)
 - Café data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, via the Overpass API
 - Map tiles by Esri
-- Built with [rich](https://github.com/Textualize/rich) and [folium](https://python-visualization.github.io/folium/)
+- Built with [rich](https://github.com/Textualize/rich), [folium](https://python-visualization.github.io/folium/), and [Streamlit](https://streamlit.io/)
 
 Made by **Shancoffee** for DEVASC Project Activity 3, University of Santo Tomas.
