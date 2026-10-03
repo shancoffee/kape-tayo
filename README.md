@@ -10,8 +10,10 @@ mark favorites, and your ratings make future recommendations better.
 
 This project is a feature enhancement of the Cisco DevNet Associate (DEVASC)
 **Lab 4.9.2: Integrate a REST API in a Python Application**
-(`graphhopper_parse-json_7.py`). The original lab code is kept in
-[`original_lab/`](original_lab/) for comparison.
+(`graphhopper_parse-json_7.py`). The final lab code is kept in
+[`original_lab/`](original_lab/) for comparison. The lab instructions (PDF)
+belong to Cisco, so they are not included here; they are available to
+students in the Cisco Networking Academy DevNet Associate course.
 
 ---
 
@@ -241,7 +243,7 @@ kape-tayo/
 ├── check_setup.py       Checks your key, libraries, and APIs
 ├── requirements.txt     Libraries to install
 ├── .streamlit/          GUI colors and settings (config.toml)
-├── original_lab/        Lab 4.9.2 PDF and the final lab code
+├── original_lab/        The final Lab 4.9.2 code (graphhopper_parse-json_7.py)
 ├── .env                 Your API key (you create it; never uploaded)
 ├── ratings.json         Your ratings (created automatically; never uploaded)
 ├── settings.json        Your settings (created automatically; never uploaded)
