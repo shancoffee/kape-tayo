@@ -167,6 +167,18 @@ def show_rated_table(rated):
     console.print(table)
 
 
+def show_bahala_pick(cafe, units="km"):
+    """Announce the café that Bahala na! picked."""
+    lines = [f"[bold]☕ {cafe['name']}[/bold]"]
+    if cafe["address"]:
+        lines.append(f"[dim]{cafe['address']}[/dim]")
+    # Straight-line distance, since this café has not been routed yet.
+    lines.append(f"About {format_distance(cafe['straight_m'], units)} away (straight line)")
+    lines.append(f"WiFi: {_format_wifi(cafe['wifi'])}")
+    console.print(Panel("\n".join(lines), title="Bahala na! Your pick",
+                        border_style="#c08552", expand=False))
+
+
 def show_directions(route, start_name, cafe_name, units="km", vehicle="car"):
     """Print the trip summary and turn-by-turn directions.
 

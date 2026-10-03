@@ -14,6 +14,9 @@ It connects all the other modules:
 
 Built on Cisco DEVASC Lab 4.9.2 (see original_lab/graphhopper_parse-json_7.py).
 """
+import random
+import time
+
 import display
 from cafe_search import find_cafes
 from graphhopper_api import VEHICLES, geocode, get_route
@@ -153,6 +156,11 @@ def show_cafe_details(start, cafe, ranked, settings, ratings):
         display.show_error(error)
         return
 
+    # Bahala na picks have no travel time yet, so fill it in from this
+    # route (no extra credit). The map popup then shows it.
+    cafe.setdefault("time_ms", route["time_ms"])
+    cafe.setdefault("distance_m", route["distance_m"])
+
     display.show_directions(route, start["name"], cafe["name"],
                             settings["units"], settings["vehicle"])
 
@@ -264,6 +272,54 @@ def my_rated_cafes(ratings):
 
 
 # ---------------------------------------------------------------------------
+# Menu option 4: Bahala na! (random pick)
+# ---------------------------------------------------------------------------
+
+def roll_for_cafe(cafes):
+    """Pick a random café with a short "spinning" animation for suspense."""
+    with console.status("Bahala na...") as status:
+        for _ in range(12):
+            # Flash random names, like a slot machine, before the real pick.
+            status.update(f"Bahala na... {random.choice(cafes)['name']}")
+            time.sleep(0.12)
+    return random.choice(cafes)
+
+
+def bahala_na(settings, ratings):
+    """Menu option 4: let fate pick a café nearby.
+
+    Skips the ranking step, so it only routes to the café that was picked.
+    That costs about 1 or 2 credits instead of about 12 for option 1.
+    """
+    start = ask_location(settings)
+    if start is None:
+        return
+
+    radius = settings["radius_m"]
+    with console.status(f"Searching for cafés within {radius} m..."):
+        # A bigger limit gives fate more choices. Searching costs 0 credits.
+        cafes, error = find_cafes(start["lat"], start["lng"], radius, limit=30)
+    if error:
+        display.show_error(error)
+        return
+
+    not_picked_yet = list(cafes)
+    while True:
+        cafe = roll_for_cafe(not_picked_yet)
+        not_picked_yet.remove(cafe)
+        display.show_bahala_pick(cafe, settings["units"])
+        show_cafe_details(start, cafe, cafes, settings, ratings)
+
+        if not ask_yes_no("Not feeling it? Roll again?", default=False):
+            return
+        if not not_picked_yet:
+            display.show_info("That was every café nearby! Starting the roll over.")
+            # Start over, but never show the same café twice in a row
+            # (unless it is the only café nearby).
+            not_picked_yet = [c for c in cafes if c is not cafe] or list(cafes)
+
+
+# ---------------------------------------------------------------------------
 # Menu option 3: Settings
 # ---------------------------------------------------------------------------
 
@@ -310,7 +366,7 @@ def main():
         elif choice == 3:
             change_settings(settings)
         elif choice == 4:
-            display.show_info("Bahala na! is coming in a later update.")
+            bahala_na(settings, ratings)
         elif choice == 5:
             break
 
