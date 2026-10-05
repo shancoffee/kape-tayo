@@ -24,7 +24,8 @@ from graphhopper_api import VEHICLES, geocode, get_route
 from kape_score import add_travel_times, rank_cafes
 from map_view import google_maps_url, show_map
 from ratings import MAX_RATING, MIN_RATING, load_ratings, rate_cafe, remove_rating, sorted_ratings
-from settings import MAX_RADIUS_M, MIN_RADIUS_M, UNITS, load_settings, save_settings
+from settings import (MAX_RADIUS_M, MIN_RADIUS_M, UNITS, load_settings, remember_location,
+                      save_settings)
 
 # Most cafés to route per search. Each one costs 1 GraphHopper credit.
 CAFE_LIMIT = 10
@@ -87,24 +88,45 @@ def ask_yes_no(prompt, default=True):
 # Menu option 1: Find cafés near me
 # ---------------------------------------------------------------------------
 
+def use_location(settings, place):
+    """Remember place as the last and most recent location, and save."""
+    remember_location(settings, place)
+    save_error = save_settings(settings)
+    if save_error:
+        display.show_error(save_error)
+    return place
+
+
 def ask_location(settings):
     """Ask where the user is and geocode it.
 
-    Pressing Enter reuses the last location (no credit used).
+    The user can type a new place, type the number of a recent place, or
+    press Enter for the last location. Reusing a place uses no credit.
     Returns a place dict {"name", "lat", "lng"}, or None to go back.
     """
     last = settings["last_location"]
+    recent = settings["recent_locations"]
     while True:
-        if last:
-            console.print(f"[dim]Press Enter to use your last location: {last['name']}[/dim]")
+        if recent:
+            display.show_recent_locations(recent)
         answer = console.input("[bold]Where are you?[/bold] (0 to go back): ").strip()
 
         if answer == "0":
             return None
         if answer == "" and last:
-            return last
+            return use_location(settings, last)
         if answer == "":
             display.show_error("Please type a place, like \"UST, Manila\" or \"SM North EDSA\".")
+            continue
+        # A number picks one of the recent places (no credit used). A plain
+        # number is never a real place, so a wrong one is an error, not a search.
+        if answer.isdigit():
+            if 1 <= int(answer) <= len(recent):
+                return use_location(settings, recent[int(answer) - 1])
+            if recent:
+                display.show_error(f"Pick a recent place from 1 to {len(recent)}, or type a place.")
+            else:
+                display.show_error("Please type a place name, like \"UST, Manila\".")
             continue
 
         with console.status("Finding your location..."):
@@ -116,12 +138,7 @@ def ask_location(settings):
             continue
 
         display.show_success(f"Found: {place['name']}")
-        # Remember it for next time.
-        settings["last_location"] = place
-        save_error = save_settings(settings)
-        if save_error:
-            display.show_error(save_error)
-        return place
+        return use_location(settings, place)
 
 
 def ask_to_rate(cafe, ratings):

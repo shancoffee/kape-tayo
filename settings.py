@@ -8,6 +8,8 @@ opens:
   - vehicle: "car", "bike", or "foot"
   - last_location: the most recent place searched, so the user can press
     Enter to reuse it (this also saves 1 GraphHopper credit)
+  - recent_locations: the last few places searched, newest first, so the
+    user can pick one instead of typing it (also no credit)
 
 If settings.json is missing, broken, or has a bad value, that value falls
 back to its default instead of crashing the app.
@@ -24,11 +26,16 @@ UNITS = ["km", "miles"]
 MIN_RADIUS_M = 100
 MAX_RADIUS_M = 5000
 
+# How many recent places to remember.
+MAX_RECENT = 5
+
 DEFAULTS = {
     "units": "km",
     "radius_m": 1000,
     "vehicle": "foot",
     "last_location": None,  # becomes {"name": ..., "lat": ..., "lng": ...}
+    # "recent_locations" is added in load_settings() as a fresh list each
+    # time, so two settings dicts never share (and change) the same list.
 }
 
 
@@ -43,6 +50,7 @@ def _is_valid_location(location):
 def load_settings():
     """Read settings.json and return a complete, valid settings dict."""
     settings = dict(DEFAULTS)
+    settings["recent_locations"] = []
     try:
         saved = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -61,7 +69,27 @@ def load_settings():
         settings["vehicle"] = saved["vehicle"]
     if _is_valid_location(saved.get("last_location")):
         settings["last_location"] = saved["last_location"]
+
+    # Keep only valid recent places (a bad one is skipped, not a crash).
+    recent = saved.get("recent_locations")
+    if isinstance(recent, list):
+        settings["recent_locations"] = [p for p in recent if _is_valid_location(p)][:MAX_RECENT]
+    # Older settings.json files have no recent list yet: start it from the
+    # last location, so it shows up right away.
+    if not settings["recent_locations"] and settings["last_location"]:
+        settings["recent_locations"] = [settings["last_location"]]
     return settings
+
+
+def remember_location(settings, place):
+    """Make place the last location and move it to the top of the recent list.
+
+    The same place is never listed twice, and only MAX_RECENT are kept.
+    This changes settings in place; call save_settings() afterwards.
+    """
+    settings["last_location"] = place
+    others = [p for p in settings["recent_locations"] if p["name"] != place["name"]]
+    settings["recent_locations"] = ([place] + others)[:MAX_RECENT]
 
 
 def save_settings(settings):

@@ -29,7 +29,8 @@ from graphhopper_api import VEHICLES, geocode, get_route
 from kape_score import add_travel_times, rank_cafes
 from map_view import build_map, google_maps_url
 from ratings import MAX_RATING, MIN_RATING, load_ratings, rate_cafe, remove_rating, sorted_ratings
-from settings import MAX_RADIUS_M, MIN_RADIUS_M, UNITS, load_settings, save_settings
+from settings import (MAX_RADIUS_M, MIN_RADIUS_M, UNITS, load_settings, remember_location,
+                      save_settings)
 
 # Most cafés to route per search (1 credit each), same as the terminal app.
 CAFE_LIMIT = 10
@@ -169,17 +170,25 @@ if "flash" in state:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def resolve_location(text):
-    """Turn the sidebar text into a place. Empty text reuses the last location.
+def resolve_location(text, recent_name=None):
+    """Turn the sidebar into a place: the typed text, else the picked recent
+    place, else the last location.
 
     Returns a place dict, or None (after showing an error).
     """
     text = text.strip()
     if not text:
-        if settings["last_location"]:
-            return settings["last_location"]
-        st.error("Type where you are in the sidebar first.")
-        return None
+        picked = [p for p in settings["recent_locations"] if p["name"] == recent_name]
+        if picked:
+            place = picked[0]                     # Reused: no credit used.
+        elif settings["last_location"]:
+            place = settings["last_location"]
+        else:
+            st.error("Type where you are in the sidebar first.")
+            return None
+        remember_location(settings, place)        # Move it to the top of the list.
+        save_settings(settings)
+        return place
 
     if text in state.places:
         place = state.places[text]   # Already looked up: no credit used.
@@ -193,7 +202,7 @@ def resolve_location(text):
             return None
         state.places[text] = place
 
-    settings["last_location"] = place
+    remember_location(settings, place)   # Last location + top of the recent list.
     error = save_settings(settings)
     if error:
         st.error(error)
@@ -357,12 +366,23 @@ with st.sidebar:
     # not re-run anything. Pressing Enter clicks the first button (Search).
     with st.form("location_form", border=False):
         location_text = st.text_input("Where are you?", placeholder="e.g. UST, Manila")
+        # Recent places, newest first. Used when the box above is empty, so
+        # picking one costs no credit. The choice is kept by name (not by
+        # position), so it stays right when the list re-orders itself.
+        recent = settings["recent_locations"]
+        recent_name = None
+        if recent:
+            recent_name = st.selectbox(
+                "Or pick a recent place", [place["name"] for place in recent],
+                index=None, placeholder="Pick a recent place", key="recent_pick",
+            )
         search_button, bahala_button = st.columns(2)
         search_clicked = search_button.form_submit_button(
             "🔎 Search", type="primary", width="stretch")
         bahala_clicked = bahala_button.form_submit_button("🎲 Bahala na!", width="stretch")
     if settings["last_location"]:
-        st.caption(f"Leave empty to use your last location: **{settings['last_location']['name']}**")
+        st.caption("Type a new place, or pick a recent one. If both are empty, your last "
+                   f"location is used: **{settings['last_location']['name']}**")
 
     st.divider()
     st.subheader("Settings")
@@ -392,9 +412,12 @@ st.markdown(
 # Actions from the sidebar buttons (they run before the tabs are drawn)
 # ---------------------------------------------------------------------------
 
-def run_search(location_text):
-    """Search cafés near the typed place and rank them. Uses about 12 credits."""
-    start = resolve_location(location_text)
+def run_search(location_text, recent_name):
+    """Search cafés near the typed (or picked recent) place and rank them.
+
+    Uses about 12 credits.
+    """
+    start = resolve_location(location_text, recent_name)
     if not start:
         return
     with st.spinner(f"Searching for coffee places within {radius} m..."):
@@ -453,10 +476,10 @@ def roll_bahala(start=None):
 TAB_FIND, TAB_BAHALA, TAB_RATED = "🔎 Find cafés", "🎲 Bahala na!", "⭐ My rated cafés"
 
 if search_clicked:
-    run_search(location_text)
+    run_search(location_text, recent_name)
     state.main_tab = TAB_FIND      # Show the results tab.
 elif bahala_clicked:
-    start = resolve_location(location_text)
+    start = resolve_location(location_text, recent_name)
     if start:
         roll_bahala(start)
         state.main_tab = TAB_BAHALA   # Jump to the Bahala na tab.

@@ -268,6 +268,14 @@ def show_menu():
     )
 
 
+def show_recent_locations(recent):
+    """Print the recent places as a numbered list, like "1. UST, Manila"."""
+    console.print("[dim]Recent places (type a number to use one, "
+                  "or press Enter for #1):[/dim]")
+    for number, place in enumerate(recent, start=1):
+        console.print(f"  [cyan]{number}.[/cyan] {place['name']}")
+
+
 def show_settings(settings):
     """Print the current settings and the Settings menu."""
     last = settings["last_location"]
